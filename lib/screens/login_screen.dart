@@ -1,64 +1,54 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:store_app/blocs/auth/auth_bloc.dart';
-import 'package:store_app/blocs/auth/auth_event.dart';
-import 'package:store_app/blocs/auth/auth_state.dart';
+import 'package:provider/provider.dart';
+import 'package:store_app/providers/auth_provider.dart';
 
-class LoginScreen extends StatelessWidget {
-  LoginScreen({Key? key}) : super(key: key);
+class LoginScreen extends StatefulWidget {
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
 
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  String _email = '';
+  String _password = '';
+
+  void _submit() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      try {
+        await Provider.of<AuthProvider>(context, listen: false).signIn(_email, _password);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login failed: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-      ),
-      body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is AuthSuccess) {
-            // Navigate to home screen
-            Navigator.of(context).pushReplacementNamed('/home');
-          }
-          if (state is AuthFailure) {
-            // Show error message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error)),
-            );
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  BlocProvider.of<AuthBloc>(context).add(
-                    SignInRequested(
-                      _emailController.text,
-                      _passwordController.text,
-                    ),
-                  );
-                },
-                child: const Text('Login'),
-              ),
-            ],
-          ),
+      appBar: AppBar(title: Text('Login')),
+      body: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            TextFormField(
+              decoration: InputDecoration(labelText: 'Email'),
+              validator: (value) => value!.isEmpty ? 'Please enter your email' : null,
+              onSaved: (value) => _email = value!,
+            ),
+            TextFormField(
+              decoration: InputDecoration(labelText: 'Password'),
+              obscureText: true,
+              validator: (value) => value!.isEmpty ? 'Please enter your password' : null,
+              onSaved: (value) => _password = value!,
+            ),
+            ElevatedButton(
+              onPressed: _submit,
+              child: Text('Login'),
+            ),
+          ],
         ),
       ),
     );
